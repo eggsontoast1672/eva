@@ -1,17 +1,12 @@
+mod lexer;
 mod opcode;
+mod parser;
 mod value;
 mod vm;
 
-use crate::vm::VirtualMachine;
-
 fn main() {
-    let mut vm = VirtualMachine::new();
-    let result = vm.exec(
-        r"
-        42
-    ",
-    );
+    let tokens = lexer::tokenize("(- (* 10 3) 10)");
 
-    println!("{:?}", result);
+    println!("{:?}", tokens);
     println!("All done!");
 }
