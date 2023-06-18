@@ -1,3 +1,5 @@
+use std::{str::Chars, iter::Peekable};
+
 #[derive(Debug)]
 pub enum Token {
     // Single character
@@ -9,65 +11,41 @@ pub enum Token {
     Symbol(String),
 }
 
-struct Lexer {
+struct Lexer<'a> {
     current: usize,
-    source: Vec<u8>,
+    source: Peekable<Chars<'a>>,
     start: usize,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     fn new(source: String) -> Self {
         Self {
             current: 0,
-            source: source.into_bytes(),
+            source: source.chars().peekable(),
             start: 0,
         }
     }
 
-    fn is_numeric(byte: u8) -> bool {
-        byte.is_ascii_digit()
-    }
-
-    fn is_whitespace(byte: u8) -> bool {
-        byte.is_ascii_whitespace()
-    }
-
-    fn next_byte(&mut self) -> Option<u8> {
-        let byte = self.source.get(self.current).copied();
-        self.current += 1;
-        byte
-    }
-
-    fn next_number(&mut self) -> String {
-        while let Some(byte) = self.peek_byte() {
-            if !Self::is_numeric(byte) {
-                break;
-            }
-            self.next_byte();
+    fn next_atom(&mut self) -> Token {
+        let lexeme = self.source.take_while(|c| {
+            *c != '(' && *c != ')' && !c.is_ascii_whitespace()
+        }).collect::<String>();
+        match lexeme.parse::<u64>() {
+            Ok(_) => Token::Number(lexeme),
+            Err(_) => Token::Symbol(lexeme),
         }
-        String::from_utf8_lossy(&self.source[self.start..self.current]).to_string()
-    }
-
-    fn next_symbol(&mut self) -> String {
-        todo!()
-    }
-
-    fn peek_byte(&self) -> Option<u8> {
-        self.source.get(self.current).copied()
     }
 }
 
-impl Iterator for Lexer {
+impl<'a> Iterator for Lexer<'a> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.start = self.current;
-        match self.next_byte()? {
-            b'(' => Some(Token::ParenLeft),
-            b')' => Some(Token::ParenRight),
-            byte if Self::is_numeric(byte) => Some(Token::Number(self.next_number())),
-            byte if Self::is_whitespace(byte) => self.next(),
-            _ => Some(Token::Symbol(self.next_symbol())),
+        match self.source.next()? {
+            '(' => Some(Token::ParenLeft),
+            ')' => Some(Token::ParenRight),
+            byte if byte.is_ascii_whitespace() => self.next(),
+            _ => Some(self.next_atom()),
         }
     }
 }
